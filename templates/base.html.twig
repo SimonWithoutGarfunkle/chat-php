@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Chat POC{% endblock %}</title>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+        .container { max-width: 720px; margin: 0 auto; }
+        nav a { margin-right: .75rem; }
+        .flash { padding: .5rem .75rem; border-radius: 4px; margin: .75rem 0; }
+        .flash-success { background: #e6ffed; color: #0a5; border: 1px solid #bdf2cd; }
+        .flash-error { background: #ffe6e6; color: #a00; border: 1px solid #f2bdbd; }
+        .card { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; }
+        form input, form button, form label { display: block; width: 100%; }
+        form label { margin-top: .5rem; margin-bottom: .25rem; }
+        form input { padding: .5rem; margin-bottom: .75rem; }
+        form button { padding: .6rem .9rem; background: #111; color: #fff; border: 0; cursor: pointer; }
+    </style>
+    {% block stylesheets %}{% endblock %}
+    {% block javascripts %}{% endblock %}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+</head>
+<body>
+<div class="container">
+    <nav>
+        <a href="{{ path('app_home') }}">Accueil</a>
+        {% if app.user %}
+            <a href="{{ path('app_logout') }}">Se déconnecter</a>
+        {% else %}
+            <a href="{{ path('app_login') }}">Se connecter</a>
+            <a href="{{ path('app_register') }}">S'inscrire</a>
+        {% endif %}
+    </nav>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="flash flash-{{ label == 'error' ? 'error' : (label == 'success' ? 'success' : label) }}">{{ message }}</div>
+        {% endfor %}
+    {% endfor %}
+
+    {% block body %}{% endblock %}
+</div>
+</body>
+</html>

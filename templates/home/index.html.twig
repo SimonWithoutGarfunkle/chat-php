@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accueil{% endblock %}
+
+{% block body %}
+<h1>Accueil (protégé)</h1>
+
+<div class="card">
+    <p>Bonjour{% if app.user %} {{ app.user.userIdentifier }}{% endif %} 👋</p>
+    <p>Cette page est accessible uniquement après connexion.</p>
+    <p>
+        <a href="{{ path('app_logout') }}">Se déconnecter</a>
+    </p>
+    <p>
+        <a href="/chat">Aller au chat</a> (si présent dans votre POC)
+    </p>
+    </div>
+{% endblock %}
