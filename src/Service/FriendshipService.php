@@ -52,4 +52,12 @@ final class FriendshipService
         $me->removeFriend($other); // ensures mutual unlink
         $this->em->flush();
     }
+
+    public function isFriend(User $me, User $other): bool
+    {
+        if ($me === $other) {
+            return false;
+        }
+        return $me->getFriends()->contains($other);
+    }
 }

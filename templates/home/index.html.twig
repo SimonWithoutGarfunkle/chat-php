@@ -3,16 +3,16 @@
 {% block title %}Accueil{% endblock %}
 
 {% block body %}
-<h1>Accueil (protégé)</h1>
+<div class="stack">
+    <div class="card">
+        <h1>Bienvenue{% if app.user %} {{ app.user.userIdentifier }}{% endif %} 👋</h1>
+        <p class="muted">Cette page est accessible uniquement après connexion.</p>
 
-<div class="card">
-    <p>Bonjour{% if app.user %} {{ app.user.userIdentifier }}{% endif %} 👋</p>
-    <p>Cette page est accessible uniquement après connexion.</p>
-    <p>
-        <a href="{{ path('app_logout') }}">Se déconnecter</a>
-    </p>
-    <p>
-        <a href="/chat">Aller au chat</a> (si présent dans votre POC)
-    </p>
+        <div style="display:flex; gap:.5rem; flex-wrap: wrap; margin-top:.75rem;">
+            <a class="btn btn-primary" href="{{ path('app_friends_index') }}">Voir mes amis</a>
+            <a class="btn btn-ghost" href="/chat">Aller au chat</a>
+            <a class="btn btn-ghost" href="{{ path('app_logout') }}">Se déconnecter</a>
+        </div>
     </div>
+</div>
 {% endblock %}

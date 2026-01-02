@@ -1,0 +1,126 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Chat avec {{ friend.email }}{% endblock %}
+
+{% block body %}
+<a href="{{ path('app_friends_index') }}">← Retour aux amis</a>
+<h1>Chat avec {{ friend.email }}</h1>
+
+<div id="status" class="muted" aria-live="polite">Connecté</div>
+
+<div id="messages" style="border:1px solid #ddd; padding:8px; height:320px; overflow-y:auto; background:#fafafa;">
+    {% for m in messages %}
+        <div class="msg" data-ts="{{ m.createdAt|date('c') }}">
+            <strong>{% if m.sender.id == me.id %}Moi{% else %}{{ friend.email }}{% endif %}</strong>
+            <span class="muted">{{ m.createdAt|date('H:i') }}</span>
+            <div>{{ m.content }}</div>
+        </div>
+    {% endfor %}
+</div>
+
+<form id="sendForm" class="row" style="margin-top:8px; gap:6px;">
+    <input id="messageInput" type="text" maxlength="2000" placeholder="Votre message…" style="flex:1" />
+    <button id="sendBtn" class="btn btn-primary" type="submit" disabled>Envoyer</button>
+</form>
+
+<script>
+    (function() {
+        const meId = {{ me.id }};
+        const friendId = {{ friend.id }};
+        const topic = {{ topic|json_encode|raw }};
+        const mercureUrl = (new URL('{{ app.request.schemeAndHttpHost }}/.well-known/mercure', window.location.href));
+        mercureUrl.searchParams.append('topic', topic);
+
+        const $messages = document.getElementById('messages');
+        const $input = document.getElementById('messageInput');
+        const $btn = document.getElementById('sendBtn');
+        const $status = document.getElementById('status');
+        const sendUrl = {{ path('app_chat_send', {friendId: friend.id})|json_encode|raw }};
+
+        function scrollBottom() {
+            $messages.scrollTop = $messages.scrollHeight;
+        }
+        scrollBottom();
+
+        function setStatus(text) { $status.textContent = text; }
+
+        // Enable/disable button
+        function canSend() { return $input.value.trim().length > 0 && $input.value.length <= 2000; }
+        function updateBtn() { $btn.disabled = !canSend(); }
+        $input.addEventListener('input', updateBtn);
+        updateBtn();
+
+        // Append message to UI (simple escaping by default via Twig; runtime via textContent)
+        function appendMsg(fromMe, content, ts) {
+            const wrap = document.createElement('div');
+            wrap.className = 'msg';
+            const who = document.createElement('strong');
+            who.textContent = fromMe ? 'Moi' : '{{ friend.email|e('js') }}';
+            const time = document.createElement('span');
+            time.className = 'muted';
+            const d = new Date(ts);
+            time.textContent = ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const text = document.createElement('div');
+            text.textContent = content; // never use innerHTML
+            wrap.appendChild(who);
+            wrap.appendChild(time);
+            wrap.appendChild(text);
+            $messages.appendChild(wrap);
+            scrollBottom();
+        }
+
+        // Mercure subscription (SSE)
+        let es;
+        function connect() {
+            try {
+                es = new EventSource(mercureUrl);
+                es.onopen = function() { setStatus('Connecté'); };
+                es.onmessage = function(ev) {
+                    try {
+                        const data = JSON.parse(ev.data);
+                        if (data && data.type === 'chat.message' && data.payload) {
+                            const p = data.payload;
+                            const fromMe = String(p.senderId) === String(meId);
+                            appendMsg(fromMe, String(p.content || ''), p.createdAt || new Date().toISOString());
+                        }
+                    } catch (e) { /* ignore malformed */ }
+                };
+                es.onerror = function() {
+                    setStatus('Déconnecté / Reconnexion…');
+                };
+            } catch (e) {
+                setStatus('Erreur de connexion');
+            }
+        }
+        connect();
+
+        // Send handler
+        document.getElementById('sendForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const content = $input.value.trim();
+            if (!content) return;
+            $btn.disabled = true;
+            try {
+                const resp = await fetch(sendUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content})
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    alert(err.message || 'Erreur');
+                } else {
+                    // Optimistic update not necessary because Mercure will echo back; but keep UI snappy
+                    // appendMsg(true, content, new Date().toISOString());
+                    $input.value = '';
+                    updateBtn();
+                }
+            } catch (e) {
+                alert('Réseau indisponible');
+            } finally {
+                updateBtn();
+            }
+        });
+    })();
+</script>
+{% endblock %}
