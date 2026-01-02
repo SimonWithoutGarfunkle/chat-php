@@ -5,6 +5,8 @@ namespace App\Entity;
 
 use App\Repository\UserRepository;
 use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -39,9 +41,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
 
+    /**
+     * Self-referencing many-to-many for friendships.
+     * The relation is maintained mutually in addFriend/removeFriend.
+     *
+     * @var Collection<int, User>
+     */
+    #[ORM\ManyToMany(targetEntity: self::class)]
+    #[ORM\JoinTable(name: 'user_friends')]
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'friend_id', referencedColumnName: 'id')]
+    private Collection $friends;
+
     public function __construct()
     {
         $this->createdAt = new DateTimeImmutable();
+        $this->friends = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -111,5 +126,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->createdAt = $createdAt;
         return $this;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function getFriends(): Collection
+    {
+        return $this->friends;
+    }
+
+    public function addFriend(User $other): void
+    {
+        if ($other === $this) {
+            return; // validation handled in service; keep entity resilient
+        }
+        if (!$this->friends->contains($other)) {
+            $this->friends->add($other);
+        }
+        if (!$other->friends->contains($this)) {
+            $other->friends->add($this);
+        }
+    }
+
+    public function removeFriend(User $other): void
+    {
+        if ($this->friends->contains($other)) {
+            $this->friends->removeElement($other);
+        }
+        if ($other->friends->contains($this)) {
+            $other->friends->removeElement($this);
+        }
     }
 }

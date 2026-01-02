@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes amis{% endblock %}
+
+{% block body %}
+    <h1>Mes amis</h1>
+
+    <div class="card" style="margin-bottom: 1rem;">
+        {% if friends|length == 0 %}
+            <p>Aucun ami pour le moment.</p>
+        {% else %}
+            <ul>
+                {% for friend in friends %}
+                    <li style="display:flex; align-items:center; gap:.5rem;">
+                        <span>{{ friend.email }}</span>
+                        <form method="post" action="{{ path('app_friends_remove', {id: friend.id}) }}" style="margin:0;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('remove_friend_' ~ friend.id) }}">
+                            <button type="submit">Retirer</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+
+    <h2>Ajouter un ami</h2>
+    <div class="card">
+        {% if candidates|length == 0 %}
+            <p>Aucun utilisateur à ajouter.</p>
+        {% else %}
+            <ul>
+                {% for u in candidates %}
+                    <li style="display:flex; align-items:center; gap:.5rem;">
+                        <span>{{ u.email }}</span>
+                        <form method="post" action="{{ path('app_friends_add', {id: u.id}) }}" style="margin:0;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('add_friend_' ~ u.id) }}">
+                            <button type="submit">Ajouter</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endblock %}

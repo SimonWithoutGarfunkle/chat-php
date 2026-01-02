@@ -26,6 +26,7 @@
     <nav>
         <a href="{{ path('app_home') }}">Accueil</a>
         {% if app.user %}
+            <a href="{{ path('app_friends_index') }}">Amis</a>
             <a href="{{ path('app_logout') }}">Se déconnecter</a>
         {% else %}
             <a href="{{ path('app_login') }}">Se connecter</a>
