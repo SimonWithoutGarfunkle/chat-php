@@ -6,11 +6,23 @@
 <a href="{{ path('app_friends_index') }}">← Retour aux amis</a>
 <h1>Chat avec {{ friend.email }}</h1>
 
-<div id="status" class="muted" aria-live="polite">Connecté</div>
+<div id="status" class="muted" aria-live="polite">Connexion…</div>
 
-<div id="messages" style="border:1px solid #ddd; padding:8px; height:320px; overflow-y:auto; background:#fafafa;">
+<style>
+    /* Minimal, readable chat styles */
+    #messages { background:#fff; color:#222; border:1px solid #ddd; padding:8px; height:320px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+    .msg { max-width:80%; padding:6px 8px; border-radius:8px; background:#f5f5f5; }
+    .msg.me { background:#e8f0fe; margin-left:auto; }
+    .msg.other { background:#f5f5f5; }
+    .msg strong { margin-right:6px; }
+    .muted { color:#666; font-size:12px; margin-left:4px; }
+    #messageInput { color:#222; }
+    #sendBtn { color:#fff; }
+}</style>
+
+<div id="messages">
     {% for m in messages %}
-        <div class="msg" data-ts="{{ m.createdAt|date('c') }}">
+        <div class="msg {% if m.sender.id == me.id %}me{% else %}other{% endif %}" data-ts="{{ m.createdAt|date('c') }}">
             <strong>{% if m.sender.id == me.id %}Moi{% else %}{{ friend.email }}{% endif %}</strong>
             <span class="muted">{{ m.createdAt|date('H:i') }}</span>
             <div>{{ m.content }}</div>
@@ -28,7 +40,8 @@
         const meId = {{ me.id }};
         const friendId = {{ friend.id }};
         const topic = {{ topic|json_encode|raw }};
-        const mercureUrl = (new URL('{{ app.request.schemeAndHttpHost }}/.well-known/mercure', window.location.href));
+        // Use same-origin public Mercure URL to ensure cookies are sent properly
+        const mercureUrl = new URL('/.well-known/mercure', window.location.origin);
         mercureUrl.searchParams.append('topic', topic);
 
         const $messages = document.getElementById('messages');
@@ -53,7 +66,7 @@
         // Append message to UI (simple escaping by default via Twig; runtime via textContent)
         function appendMsg(fromMe, content, ts) {
             const wrap = document.createElement('div');
-            wrap.className = 'msg';
+            wrap.className = 'msg ' + (fromMe ? 'me' : 'other');
             const who = document.createElement('strong');
             who.textContent = fromMe ? 'Moi' : '{{ friend.email|e('js') }}';
             const time = document.createElement('span');
@@ -73,7 +86,8 @@
         let es;
         function connect() {
             try {
-                es = new EventSource(mercureUrl);
+                // withCredentials ensures auth cookies are sent if the hub is on another origin
+                es = new EventSource(mercureUrl, { withCredentials: true });
                 es.onopen = function() { setStatus('Connecté'); };
                 es.onmessage = function(ev) {
                     try {
@@ -87,6 +101,9 @@
                 };
                 es.onerror = function() {
                     setStatus('Déconnecté / Reconnexion…');
+                    // Explicitly try to reconnect after a short delay
+                    try { es.close(); } catch (_) {}
+                    setTimeout(connect, 2000);
                 };
             } catch (e) {
                 setStatus('Erreur de connexion');
@@ -110,8 +127,13 @@
                     const err = await resp.json().catch(() => ({}));
                     alert(err.message || 'Erreur');
                 } else {
-                    // Optimistic update not necessary because Mercure will echo back; but keep UI snappy
-                    // appendMsg(true, content, new Date().toISOString());
+                    // Keep UI snappy for the sender: append immediately using server payload
+                    const data = await resp.json().catch(() => null);
+                    if (data && typeof data === 'object') {
+                        appendMsg(true, String(data.content || content), data.createdAt || new Date().toISOString());
+                    } else {
+                        appendMsg(true, content, new Date().toISOString());
+                    }
                     $input.value = '';
                     updateBtn();
                 }
